@@ -1,0 +1,896 @@
+---
+documentclass: article
+fontsize: 9.5pt
+header-includes:
+- \usepackage{polski}
+- \usepackage{array, makecell}
+- \usepackage{boldline}
+- \usepackage{amsmath,amssymb,stmaryrd}
+- \usepackage{fontenc}
+- \usepackage{fontspec}
+- \usepackage{FiraSans}
+- \usepackage{marginnote}
+- \usepackage{fancyhdr}
+- \usepackage{tabularx}
+- \usepackage[singlelinecheck=false, justification=raggedright]{caption}
+- \usepackage[document]{ragged2e}
+- \usepackage{xcolor,colortbl}
+- \usepackage{blindtext}
+- \usepackage{tcolorbox}
+- \usepackage{lipsum}
+- \usepackage{anyfontsize}
+- \usepackage[]{mathspec}
+- \setmonofont{Fira Mono}
+- \setmathsfont(Digits,Latin,Greek){Fira Sans SemiBold}
+- \usepackage[]{siunitx}
+- \DeclareRobustCommand{\%}{\ifmmode\textsf{\symbol{`\%}}\else\symbol{`\%}\fi}
+- \DeclareSIUnit{\percent}{\%}
+- \setlength{\parindent}{4em}
+- \setlength{\parskip}{1em}
+- \usepackage{graphicx}
+- \usepackage{tikz}
+- \usepackage{geometry} \geometry{ a4paper, left=12.7mm, right=52mm, top=12.7mm, bottom=12.7mm}
+- \usepackage{tikzpagenodes}
+- \usepackage[placement=top, angle=0, color=szary, scale=4, hshift=10cm, vshift=-50]{background}
+- \backgroundsetup{angle=0, scale=1,firstpage=false, contents={\tikz\fill[szary] (18.6,60)
+  rectangle (10,20);}}
+mainfont: Fira Sans
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: no
+    toc_depth: 1
+  html_document:
+    df_print: paged
+    toc: no
+    toc_depth: '1'
+  word_document:
+    toc: no
+    toc_depth: '1'
+---
+
+\definecolor{granat}{RGB}{0,29,119} 
+\definecolor{szary}{RGB}{242,242,242}
+\definecolor{zielony}{RGB}{190,214,0}
+
+\arrayrulecolor{granat}
+\renewcommand\tablename{Tablica}
+
+
+
+```{r include = F}
+# Zamiana "." na "," przy wyświetlaniu liczb rzeczywistych
+
+options(OutDec = ",")
+```
+
+```{r , include=F}
+
+library(tidyr)
+library(dplyr)
+library(openxlsx)
+library(foreign)
+library(rmarkdown)
+```
+
+
+```{r Source, include=F}
+### Ustawienie ścieżki dostępu, wczytanie baz danych za rok n oraz rok n-1 oraz zamiana na data frame ###
+
+setwd('C:\\...')
+
+baza_n <- read.csv('z5417d.csv',
+                 header = T, dec = ",", sep = ';',
+                 stringsAsFactors = FALSE)
+
+baza_n_1 <- read.csv('z5416d.csv',
+                 header = T, dec = ",", sep = ';',
+                 stringsAsFactors = FALSE)
+
+baza_n <- as_tibble(baza_n)
+baza_n_1 <- as_tibble(baza_n_1)
+```
+
+
+```{r year, cache=T, include=F}
+### Przypisanie wartości roku n oraz roku n-1 ###
+
+n <- 2017
+n_1 <- 2016
+
+```
+
+
+```{r values, cache=T, include=F}
+
+### Naliczenie niezbędnych wartości, wykorzystywanych w opracowaniu ###
+
+professionsGroup = c("M", "S", "D") 
+provinceList <- seq(2, 32, by = 2)
+
+
+### Liczba nowo utworzonych miejsc pracy w województwie dla n
+w1_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum(P3*WAGA)))
+
+### Liczba zlikwidowanych miejsc pracy w województwie dla roku n ###
+w2_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum(P4*WAGA)))
+### Liczba nowo utworzonych miejsc pracy w województwie dla roku n-1 ###
+w1_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum(P3*WAGA)))
+### Liczba zlikwidowanych miejsc pracy w województwie dla roku n-1 ###
+w2_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum(P4*WAGA)))
+### Liczba nowo utworzonych miejsc pracy w Polsce dla roku n ###
+w1_p_n <- as.double(baza_n %>% summarise(sum(P3*WAGA)))
+
+
+### Liczba pracujących w województwie dla roku n ###
+w3_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum(P2_011*WAGA)))
+### Liczba pracujących w województwie dla roku n-1 ###
+w3_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum(P2_011*WAGA)))
+### Liczba pracujących kobiet w województwie dla roku n ###
+w3k_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum(P2_012*WAGA)))
+### Liczba pracujących kobiet w województwie dla roku n-1 ###
+w3k_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum(P2_012*WAGA)))
+### Liczba pracujących mężczyzn w województwie dla roku n ###
+w3m_n <- w3_n - w3k_n
+### Liczba pracujących mężczyzn w województwie dla roku n-1 ###
+w3m_n_1 <- w3_n_1 - w3k_n_1
+
+
+#Liczba wolnych miejsc pracy w województwie dla roku n
+w4_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum(P6_011 * WAGA)))
+#Liczba wolnych miejsc pracy w województwie dla roku n-1
+w4_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum(P6_011 * WAGA)))
+#Liczba wolnych miejsc pracy w sektorze prywatnym w województwie dla roku n
+w4_n_w_pryw <- as.double(baza_n %>% filter(WOJ == 4 & SEK == 2) %>% summarise(sum(P6_011 * WAGA)))
+#Liczba wolnych miejsc pracy w sektorze prywatnym w województwie dla roku n-1
+w4_n_1_w_pryw <- as.double(baza_n_1 %>% filter(WOJ == 4 & SEK == 2) %>% summarise(sum(P6_011 * WAGA)))
+#Liczba wolnych miejsc pracy w sektorze publicznym w województwie dla roku n
+w4_n_w_pub <- as.double(baza_n %>% filter(WOJ == 4 & SEK == 1) %>% summarise(sum(P6_011 * WAGA)))
+#Liczba wolnych miejsc pracy w sektorze publicznym w województwie dla roku n-1
+w4_n_1_w_pub <- as.double(baza_n_1 %>% filter(WOJ == 4 & SEK == 1) %>% summarise(sum(P6_011 * WAGA)))
+
+
+### Liczba pracujących niepełnosprawnych w województwie dla roku n ###
+w5_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum(P7*WAGA)))
+### Liczba pracujących niepełnosprawnych w województwie dla roku n-1 ###
+w5_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum(P7*WAGA)))
+### Liczba pracujących niepełnosprawnych w sektorze publicznym w województwie dla roku n ###
+w5pub_n <- as.double(baza_n %>% filter(WOJ == 4 & SEK == 1) %>% summarise(sum(P7*WAGA)))
+### Liczba pracujących niepełnosprawnych w sektorze publicznym w województwie dla roku n-1 ###
+w5pub_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4 & SEK == 1) %>% summarise(sum(P7*WAGA)))
+### Liczba pracujących niepełnosprawnych w sektorze prywatnym w województwie dla roku n ###
+w5pryw_n <- as.double(baza_n %>% filter(WOJ == 4 & SEK == 2) %>% summarise(sum(P7*WAGA)))
+### Liczba pracujących niepełnosprawnych w sektorze prywatnym w województwie dla roku n-1 ###
+w5pryw_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4 & SEK == 2) %>% summarise(sum(P7*WAGA)))
+
+
+# Liczba pracujących niepełnosprawnych w województwie dla roku n w jednostkach dużych, średnich i malych
+
+for (i in professionsGroup){
+   assign(paste("w5_n_", i, sep = ""), as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum(P7 * WAGA))))
+}
+
+### Liczba pracujących w sektorze publicznym w województwie dla roku n ###
+w6pub_n <- as.double(baza_n %>% filter(WOJ == 4 & SEK == 1) %>% summarise(sum(P2_011*WAGA)))
+### Liczba pracujących w sektorze publicznym w województwie dla roku n-1 ###
+w6pub_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4 & SEK == 1) %>% summarise(sum(P2_011*WAGA)))
+### Liczba pracujących w sektorze prywatnym w województwie dla roku n ###
+w6pryw_n <- as.double(baza_n %>% filter(WOJ == 4 & SEK == 2) %>% summarise(sum(P2_011*WAGA)))
+### Liczba pracujących w sektorze prywatnym w województwie dla roku n-1 ###
+w6pryw_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4 & SEK == 2) %>% summarise(sum(P2_011*WAGA)))
+
+
+# Liczba pracujących ogółem w województwie dla roku n w jednostkach dużych, srednich i malych
+
+for (i in professionsGroup){
+   assign(paste("w7_n_", i, sep = ""), as.double(
+     baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum(P2_011 * WAGA))))
+}
+
+### Liczba pracujących w województwie dla roku n w wielkich grupach zawodów
+## TODO - tylko rok się zmienia
+wgz1_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_021 + P2_031 + P2_041 + P2_051) * WAGA)))
+wgz2_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_061 + P2_071 + P2_081 + P2_091 + P2_101 + P2_111) * WAGA)))
+wgz3_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_121 + P2_131 + P2_141 + P2_151 + P2_161) * WAGA)))
+wgz4_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_171 + P2_181 + P2_191 + P2_201) * WAGA)))
+wgz5_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_211 + P2_221 + P2_231 + P2_241) * WAGA)))
+wgz6_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_251 + P2_261 + P2_271) * WAGA)))
+wgz7_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_281 + P2_291 + P2_301 + P2_311 + P2_321) * WAGA)))
+wgz8_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_331 + P2_341 + P2_351) * WAGA)))
+wgz9_n <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P2_361 + P2_371 + P2_381 + P2_391 + P2_401 + P2_411) * WAGA)))
+
+### Liczba pracujących w województwie dla roku n-1 w wielkich grupach zawodów
+wgz1_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_021 + P2_031 + P2_041 + P2_051) * WAGA)))
+wgz2_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_061 + P2_071 + P2_081 + P2_091 + P2_101 + P2_111) * WAGA)))
+wgz3_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_121 + P2_131 + P2_141 + P2_151 + P2_161) * WAGA)))
+wgz4_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_171 + P2_181 + P2_191 + P2_201) * WAGA)))
+wgz5_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_211 + P2_221 + P2_231 + P2_241) * WAGA)))
+wgz6_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_251 + P2_261 + P2_271) * WAGA)))
+wgz7_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_281 + P2_291 + P2_301 + P2_311 + P2_321) * WAGA)))
+wgz8_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_331 + P2_341 + P2_351) * WAGA)))
+wgz9_n_1 <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P2_361 + P2_371 + P2_381 + P2_391 + P2_401 + P2_411) * WAGA)))
+
+
+### Liczba pracujących w województwie dla roku n w wielkich grupach zawodów w klasie małej, średniej i dużej
+## TODO - podwojna petla dla wojewodztw
+for (i in professionsGroup) {
+  assign(paste("wgz1_n_", i, sep = ""), as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_021 + P2_031 + P2_041 + P2_051) * WAGA))))
+  assign(paste("wgz2_n_",i, sep = ""), as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_061 + P2_071 + P2_081 + P2_091 + P2_101 + P2_111) * WAGA))))
+  assign(paste("wgz3_n_",i, sep = ""), as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_121 + P2_131 + P2_141 + P2_151 + P2_161) * WAGA))))
+  assign(paste("wgz4_n_",i, sep = ""), as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_171 + P2_181 + P2_191 + P2_201) * WAGA))))
+  assign(paste("wgz5_n_",i, sep = ""), as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_211 + P2_221 + P2_231 + P2_241) * WAGA))))
+   assign(paste("wgz6_n_",i, sep = ""),as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_251 + P2_261 + P2_271) * WAGA))))
+    assign(paste("wgz7_n_",i, sep = ""),as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_281 + P2_291 + P2_301 + P2_311 + P2_321) * WAGA))))
+     assign(paste("wgz8_n_",i, sep = ""),as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_331 + P2_341 + P2_351) * WAGA))))
+      assign(paste("wgz9_n_",i, sep = ""),as.double(baza_n %>% filter(WOJ == 4 & KLASA_PR == i) %>% summarise(sum((P2_361 + P2_371 + P2_381 + P2_391 + P2_401 + P2_411) * WAGA))))
+}
+
+### Liczba wolnych miejsc pracy w województwie dla roku n w wielkich grupach zawodów
+## TODO - mylące nazwenictwo
+wgz1_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_021 + P6_031 + P6_041 + P6_051) * WAGA)))
+wgz2_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_061 + P6_071 + P6_081 + P6_091 + P6_101 + P6_111) * WAGA)))
+wgz3_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_121 + P6_131 + P6_141 + P6_151 + P6_161) * WAGA)))
+wgz4_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_171 + P6_181 + P6_191 + P6_201) * WAGA)))
+wgz5_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_211 + P6_221 + P6_231 + P6_241) * WAGA)))
+wgz6_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_251 + P6_261 + P6_271) * WAGA)))
+wgz7_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_281 + P6_291 + P6_301 + P6_311 + P6_321) * WAGA)))
+wgz8_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_331 + P6_341 + P6_351) * WAGA)))
+wgz9_n_w <- as.double(baza_n %>% filter(WOJ == 4) %>% summarise(sum((P6_361 + P6_371 + P6_381 + P6_391 + P6_401 + P6_411) * WAGA)))
+
+
+### Liczba wolnych miejsc pracy w województwie dla roku n-1 w wielkich grupach zawodów
+wgz1_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_021 + P6_031 + P6_041 + P6_051) * WAGA)))
+wgz2_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_061 + P6_071 + P6_081 + P6_091 + P6_101 + P6_111) * WAGA)))
+wgz3_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_121 + P6_131 + P6_141 + P6_151 + P6_161) * WAGA)))
+wgz4_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_171 + P6_181 + P6_191 + P6_201) * WAGA)))
+wgz5_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_211 + P6_221 + P6_231 + P6_241) * WAGA)))
+wgz6_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_251 + P6_261 + P6_271) * WAGA)))
+wgz7_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_281 + P6_291 + P6_301 + P6_311 + P6_321) * WAGA)))
+wgz8_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_331 + P6_341 + P6_351) * WAGA)))
+wgz9_n_1_w <- as.double(baza_n_1 %>% filter(WOJ == 4) %>% summarise(sum((P6_361 + P6_371 + P6_381 + P6_391 + P6_401 + P6_411) * WAGA)))
+
+
+### Liczba pracujących niepełnosprawnych w województwie dla roku n w sekcjach PKD
+## TODO - zrobić podwójną pętlę dla województw
+
+for (i in LETTERS[1:19]) {
+ assign(paste("Sek", i, "n_n", sep = ""), as.double(baza_n %>% filter(WOJ == 4 & SEKC_PKD == i) %>% summarise(sum(P7 * WAGA))))
+}
+
+### Liczba wolnych miejsc pracy w województwie dla roku n w sekcjach PKD
+for (i in LETTERS[1:19]) {
+ assign(paste("Sek", i, "w_n", sep = ""), as.double(baza_n %>% filter(WOJ == 4 & SEKC_PKD == i) %>% summarise(sum(P7 * WAGA))))
+}
+
+### Liczba wolnych miejsc pracy w województwie dla roku n w sekcjach PKD w sektorze prywatnym
+for (i in LETTERS[1:19]) {
+ assign(paste("Sek", i, "w_pryw_n", sep = ""), as.double(baza_n %>% filter(WOJ == 4 & SEKC_PKD == i & SEK == 2) %>% summarise(sum(P6_011 * WAGA))))
+}
+
+### Liczba wolnych miejsc pracy w województwie dla roku n w sekcjach PKD w sektorze publicznym
+for (i in LETTERS[1:19]) {
+ assign(paste("Sek", i, "w_pub_n", sep = ""), as.double(baza_n %>% filter(WOJ == 4 & SEKC_PKD == i & SEK == 1) %>% summarise(sum(P6_011 * WAGA))))
+}
+```
+
+
+```{r text, cache=T, include=F}
+
+### Oprogramowanie wyświetlania tekstu w zależności od uzyskanych wartości ###
+
+
+# Było to o 2,5 tys. więcej niż w 2016 r. # (str. 1 opracowania, akapit 1)
+
+l1_1 <- case_when(
+  w1_n > w1_n_1 ~ paste0('Było to o ', round(abs(w1_n - w1_n_1)/1000,1), ' tys. więcej niż w ', n_1, ' r.'),
+  w1_n < w1_n_1 ~ paste0('Było to o ', round(abs(w1_n - w1_n_1)/1000,1), ' tys. mniej niż w ', n_1, ' r.'),
+  w1_n == w1_n_1 ~ 'Było to tyle samo, ile w poprzednim roku.'
+  )
+
+
+# Jednocześnie wzrosła liczba zlikwidowanych miejsc pracy. # (str. 1 opracowania, akapit 1)
+
+l1_2 <- case_when(
+  w2_n > w2_n_1 ~ 'Jednocześnie wzrosła liczba zlikwidowanych miejsc pracy.',
+  w2_n < w2_n_1 ~ 'Jednocześnie spadła liczba zlikwidowanych miejsc pracy.',
+  w2_n == w2_n_1 ~ 'Jednocześnie liczba zlikwidowanych miejsc pracy nie zmieniła się.'
+  )
+
+
+
+# W 2017 r. podmioty zlikwidowały 11,7 tys. miejsc pracy, a w 2016 r. 11,2 tys. # (str. 1 opracowania, akapit 1)
+
+l1_3 <- case_when(
+  w2_n != w2_n_1 ~ paste0('W ', n, ' r. podmioty zlikwidowały ', round(w2_n/1000,1), ' tys. miejsc pracy, a w ', n_1, ' r. ', round(w2_n_1/1000,1), ' tys.'),
+  w2_n == w2_n_1 ~ paste0('W ', n, ' r. podmioty zlikwidowały ', round(w2_n/1000,1), ' tys. miejsc pracy, czyli tyle samo, ile w ', n_1, ' r.')
+  )
+
+
+
+# Na koniec 2017 r. na terenie województwa kujawsko-pomorskiego pracowało 530,9 tys. osób, tj. o 1,9% więcej niż w 2016 r. # (str. 1 opracowania, akapit 3)
+
+l1_4 <- case_when(
+  w3_n > w3_n_1 ~ paste0('Na koniec ', n, ' r. na terenie województwa kujawsko-pomorskiego pracowało ', round(w3_n/1000,1), ' tys. osób, tj. o ', round(100*(w3_n - w3_n_1)/w3_n,1), '% więcej niż w ', n_1, ' r.'),
+  w3_n < w3_n_1 ~ paste0('Na koniec ', n, ' r. na terenie województwa kujawsko-pomorskiego pracowało ', round(w3_n/1000,1), ' tys. osób, tj. o ', round(100*(w3_n - w3_n_1)/w3_n,1), '% mniej niż w ', n_1, ' r.'),
+  w3_n == w3_n_1 ~ paste0('Na koniec ', n, ' r. na terenie województwa kujawsko-pomorskiego pracowało ', round(w3_n/1000,1), ' tys. osób, czyli tyle samo, ile w ', n_1, ' r.')
+  )
+
+
+
+# W zbiorowości pracujących większą część stanowili mężczyźni (w 2017 r. było ich 52,2%). # (str. 1 opracowania, akapit 3)
+
+l1_5 <- case_when(
+  w3m_n > w3k_n ~ paste0('W zbiorowości pracujących większą część stanowili mężczyźni (w ', n, ' r. było ich ',round(100*w3m_n/w3_n,1), '%).'),
+  w3m_n < w3k_n ~ paste0('W zbiorowości pracujących większą część stanowiły kobiety (w ', n, ' r. było ich ',round(100*w3k_n/w3_n,1), '%).'),
+  w3m_n == w3k_n ~ 'W zbiorowości pracujących było tyle samo kobiet i mężczyzn.'
+  )
+
+
+
+# W skali roku liczba pracujących kobiet zwiększyła się o 2,1%, a mężczyzn o 1,7%. # (str. 1 opracowania, akapit 3)
+
+l1_6 <- case_when(
+  
+  (w3k_n > w3k_n_1)&(w3m_n > w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet zwiększyła się o ', abs(round(100*(w3k_n-w3k_n_1)/w3k_n_1,1)), '%, a mężczyzn o ', abs(round(100*(w3m_n-w3m_n_1)/w3m_n_1,1)), '%.'),
+  (w3k_n < w3k_n_1)&(w3m_n < w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet zmniejszyła się o ', abs(round(100*(w3k_n-w3k_n_1)/w3k_n_1,1)), '%, a mężczyzn o ', abs(round(100*(w3m_n-w3m_n_1)/w3m_n_1,1)), '%.'),
+  (w3k_n > w3k_n_1)&(w3m_n < w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet zwiększyła się o ', abs(round(100*(w3k_n-w3k_n_1)/w3k_n_1,1)), '%, a liczba mężczyzn zmniejszyła się o ', abs(round(100*(w3m_n-w3m_n_1)/w3m_n_1,1)), '%.'),
+  (w3k_n < w3k_n_1)&(w3m_n > w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet zmniejszyła się o ', abs(round(100*(w3k_n-w3k_n_1)/w3k_n_1,1)), '%, a liczba mężczyzn zwiększyła się o ', abs(round(100*(w3m_n-w3m_n_1)/w3m_n_1,1)), '%.'),
+  (w3k_n > w3k_n_1)&(w3m_n == w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet zwiększyła się o ', abs(round(100*(w3k_n-w3k_n_1)/w3k_n_1,1)), '%, a liczba mężczyzn nie zmieniła się.'),
+  (w3k_n < w3k_n_1)&(w3m_n == w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet zmniejszyła się o ', abs(round(100*(w3k_n-w3k_n_1)/w3k_n_1,1)), '%, a liczba mężczyzn nie zmieniła się.'),
+  (w3k_n == w3k_n_1)&(w3m_n > w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet nie zmieniła się, a liczba mężczyzn zwiększyła się o ', abs(round(100*(w3m_n-w3m_n_1)/w3m_n_1,1)), '%.'),
+  (w3k_n == w3k_n_1)&(w3m_n < w3m_n_1) ~ paste0('W skali roku liczba pracujących kobiet nie zmieniła się, a liczba mężczyzn zmniejszyła się o ', abs(round(100*(w3m_n-w3m_n_1)/w3m_n_1,1)), '%.'),
+  (w3k_n == w3k_n_1)&(w3m_n == w3m_n_1) ~ 'W skali roku liczba pracujących kobiet i mężczyzn nie zmieniła się.'
+  )
+
+
+
+
+
+```
+
+
+
+```{r cache=T, include=F}
+
+# STRONA 1 FRAGMENT 7
+
+# "Podobnie jak w poprzednich latach, większość osób pracowała w sektorze prywatnym (w 2017 r. stanowili oni 72,3% ogółu pracujących w województwie)." # (str. 1 opracowania, akapit 4)
+
+### poprzedni rok, obecny rok - który sektor dominował w poprzednim i w obecnym roku
+###### publiczny prywatny (czy wzrost, spadek czy bez zmian w skali roku) 
+
+# przykładowe dane do testów
+#
+# w6pub_n_1 <- 6
+# w6pryw_n_1 <- 9
+# 
+# w6pub_n <- 11
+# w6pryw_n <- 10
+# 
+# w3_n <- w6pub_n+w6pryw_n
+# w3_n
+
+l1_7 <- case_when(  
+### 1) pub pub 
+###### a) pub + pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(1a) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'),
+###### b) pub + pryw -
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(1b) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'),
+###### c) pub + pryw .
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(1c) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### d) pub - pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(1d) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym natomiast liczba pracujących wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'),
+###### e) pub - pryw -
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(1e) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'),
+###### f) pub - pryw .
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(1f) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### g) pub . pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(1g) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze prywatnym natomiast liczba pracujących wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'),
+###### h) pub . pryw -  
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(1h) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze prywatnym natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'),
+###### i) pub . pryw .  
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n > w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(1i) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). Zarówno w sektorze publicznym jak i prywatnym liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+
+### 2) pub pryw 
+###### a) pub + pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(2a) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%, a w sektorze publicznym o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'), 
+###### b) pub + pryw -
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(2b) NIEMOŻLIWE'), 
+###### c) pub + pryw .
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(2c) NIEMOŻLIWE'), 
+###### d) pub - pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(2d) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym natomiast liczba pracujących spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'), 
+###### e) pub - pryw -
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(2e) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%, a w sektorze publicznym o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'),  
+###### f) pub - pryw .
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(2f) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze publicznym natomiast liczba pracujących spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'), 
+###### g) pub . pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(2g) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### h) pub . pryw -  
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(2h) NIEMOŻLIWE'), 
+###### i) pub . pryw .  
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n < w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(2i) NIEMOŻLIWE'),
+
+### 3) pub równo 
+###### a) pub + pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(3a) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym. W skali roku liczba pracujących w sektorze publicznym wzrosła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'), 
+###### b) pub + pryw -
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(3b) NIEMOŻLIWE'), 
+###### c) pub + pryw .
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(3c) NIEMOŻLIWE'), 
+###### d) pub - pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(3d) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym. W skali roku liczba pracujących w sektorze publicznym spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym natomiast liczba pracujących wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'), 
+###### e) pub - pryw -
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(3e) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym. W skali roku liczba pracujących w sektorze publicznym spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'), 
+###### f) pub - pryw .
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(3f) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym. W skali roku liczba pracujących w sektorze publicznym spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### g) pub . pryw +
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(3g) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym. Liczba pracujących w sektorze publicznym była taka sama jak w ', n_1, ' roku. W sektorze prywatnym natomiast w skali roku liczba pracujących roku wzrosła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%.'), ###### h) pub . pryw -  
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(3h) NIEMOŻLIWE'), 
+###### i) pub . pryw .   
+(w6pub_n_1 > w6pryw_n_1)&(w6pub_n == w6pryw_n)&(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(3i) NIEMOŻLIWE'),
+
+### 4) pryw pub 
+###### a) pub + pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(4a) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### b) pub + pryw -
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(4b) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### c) pub + pryw .
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(4c) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym  natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### d) pub - pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(4d) NIEMOŻLIWE'),
+###### e) pub - pryw -
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(4e) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### f) pub - pryw .
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(4f) NIEMOŻLIWE'),
+###### g) pub . pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(4g) NIEMOŻLIWE'),
+###### h) pub . pryw -  
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(4h) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie). Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze prywatnym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### i) pub . pryw .  
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(4i) NIEMOŻLIWE'),
+  
+### 5) pryw pryw 
+###### a) pub + pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(5a) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%, a w sektorze publicznym o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'),
+###### b) pub + pryw -
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(5b) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym  natomiast liczba pracujących wzrosła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'),
+###### c) pub + pryw .
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(5c) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze publicznym  natomiast liczba pracujących wzrosła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'),
+###### d) pub - pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(5d) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ',abs(round(100*(w6pryw_n-w6pryw_n_1)/w6pryw_n_1,1)), '%. W sektorze publicznym  natomiast liczba pracujących spadła o ', abs(round(100*(w6pub_n-w6pub_n_1)/w6pub_n_1,1)), '%.'),
+###### e) pub - pryw -
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(5e) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%, a w sektorze publicznym o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'),
+###### f) pub - pryw .
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(5f) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze publicznym  natomiast liczba pracujących spadła o ', abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%.'),
+###### g) pub . pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(5g) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba wzrosła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym  natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### h) pub . pryw -  
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(5h) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). W skali roku ich liczba spadła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym  natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### i) pub . pryw .  
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(5i) Podobnie jak w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie). Zarówno w sektorze publicznym jak i prywatnym liczba pracujących była taka sama jak w ', n_1, ' roku.'), 
+  
+### 6) pryw równo 
+###### a) pub + pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(6a) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.  W skali roku liczba pracujących w sektorze publicznym wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### b) pub + pryw -
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(6b) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.  W skali roku liczba pracujących w sektorze publicznym wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### c) pub + pryw .
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(6c) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.  W skali roku liczba pracujących w sektorze publicznym wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym  natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### d) pub - pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(6d) NIEMOŻLIWE'),
+###### e) pub - pryw -
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(6e) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.  W skali roku liczba pracujących w sektorze publicznym spadła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### f) pub - pryw .
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(6f) NIEMOŻLIWE'),
+###### g) pub . pryw +
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(6g) NIEMOŻLIWE'),
+###### h) pub . pryw -  
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(6h) Inaczej niż w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.  Liczba pracujących w sektorze publicznym była taka sama jak w ', n_1, ' roku.W sektorze prywatnym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### i) pub . pryw .  
+(w6pub_n_1 < w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(6i) NIEMOŻLIWE'),
+  
+### 7) równo pub 
+###### a) pub + pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(7a) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### b) pub + pryw -
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(7b) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### c) pub + pryw .
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(7c) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%. W sektorze prywatnym  natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### d) pub - pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(7d) NIEMOŻLIWE'),
+###### e) pub - pryw -
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(7e) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba spadła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### f) pub - pryw .
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(7f) NIEMOŻLIWE'),
+###### g) pub . pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(7g) NIEMOŻLIWE'),
+###### h) pub . pryw -  
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(7h) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze publicznym (w ', n, ' r. stanowili oni ', round(w6pub_n/w3_n*100,1), '% ogółu pracujących w województwie).Ich liczba była taka sama jak w ', n_1, ' roku. W sektorze prywatnym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### i) pub . pryw .  
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n > w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(7i) NIEMOŻLIWE'),
+  
+### 8) równo pryw 
+###### a) pub + pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(8a) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba wzrosła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%, a w sektorze publicznym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### b) pub + pryw -
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(8b) NIEMOŻLIWE'),
+###### c) pub + pryw .
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(8c) NIEMOŻLIWE'),
+###### d) pub - pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(8d) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba wzrosła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### e) pub - pryw -
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(8e) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba spadła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%, a w sektorze publicznym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### f) pub - pryw .
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(8f) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie).Ich liczba była taka sama jak w ', n_1, ' roku.W sektorze publicznym  natomiast liczba pracujących spadła o ', abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### g) pub . pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(8g) Inaczej niż w ', n_1, ' roku, większość osób pracowała w sektorze prywatnym (w ', n, ' r. stanowili oni ', round(w6pryw_n/w3_n*100,1), '% ogółu pracujących w województwie).W skali roku ich liczba wzrosła o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)), '%. W sektorze publicznym  natomiast liczba pracujących była taka sama jak w ', n_1, ' roku.'),
+###### h) pub . pryw -  
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(8h) NIEMOŻLIWE'),
+###### i) pub . pryw .  
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n < w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(8i) NIEMOŻLIWE'),
+  
+### 9) równo równo 
+###### a) pub + pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(9a) Podobnie jak w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.W skali roku liczba pracujących w sektorze publicznym wzrosła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### b) pub + pryw -
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(9b) NIEMOŻLIWE'),
+###### c) pub + pryw .
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 < w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(9c) NIEMOŻLIWE'),
+###### d) pub - pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(9d) NIEMOŻLIWE'),
+###### e) pub - pryw -
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(9e) Podobnie jak w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.W skali roku liczba pracujących w sektorze publicznym spadła o ',abs(round((w6pub_n-w6pub_n_1)/w6pub_n_1*100,1)), '%, a w sektorze prywatnym o ',abs(round((w6pryw_n-w6pryw_n_1)/w6pryw_n_1*100,1)),'%.'),
+###### f) pub - pryw .
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 > w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(9f) NIEMOŻLIWE'),
+###### g) pub . pryw +
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 < w6pryw_n) ~ paste0('(9g) NIEMOŻLIWE'),
+###### h) pub . pryw -  
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 > w6pryw_n) ~ paste0('(9h) NIEMOŻLIWE'),
+###### i) pub . pryw .    
+(w6pub_n_1 == w6pryw_n_1)&(w6pub_n == w6pryw_n) &(w6pub_n_1 == w6pub_n)&(w6pryw_n_1 == w6pryw_n) ~ paste0('(9i) Podobnie jak w ', n_1, ' roku, w ', n,' roku tyle samo osób pracowało w sektorze publicznym i prywatnym.Zarówno w sektorze publicznym jak i prywatnym liczba pracujących była taka sama jak w ', n_1, ' roku.')
+)
+
+l1_7
+
+```
+
+
+```{r include = F, cache = T}
+
+# STRONA 1 FRAGMENT 8
+
+# "Wśród pracujących ponad połowa pracowała w podmiotach dużych (powyżej 49 pracujących) – 53,1%. W jednostkach średnich (od 10 do 49 pracujących) pracowało 26,3% ogółu pracujących, a w małych (do 9 pracujących) 20,6%." # (str. 1 opracowania, akapit 5)
+
+### klasa wielkości podmiotów, w których było najwięcej pracujących
+###### ponad połowa czy tylko najwięcej 
+
+# przykładowe dane do testów
+# w7_n_M <- 1
+# w7_n_S <- 10
+# w7_n_D <- 100
+
+l1_8 <- case_when( 
+### 1) małe > średnie > duże
+###### a) ponad połowa
+(w7_n_M > w7_n_S)&(w7_n_M > w7_n_D)&(w7_n_S > w7_n_D)&(w7_n_M > 0.5*w3_n) ~ paste0('(1a) Wśród pracujących ponad połowa pracowała w podmiotach małych (do 9 pracujących) - ', round(w7_n_M/w3_n*100,1), '%. W jednostkach średnich (od 10 do 49 pracujących) pracowało ', round(w7_n_S/w3_n*100,1), '% ogółu pracujących, a w dużych (powyżej 49 pracujących) ', round(w7_n_D/w3_n*100,1), '%.'),
+###### b) najwięcej
+(w7_n_M > w7_n_S)&(w7_n_M > w7_n_D)&(w7_n_S > w7_n_D)&(w7_n_M < 0.5*w3_n) ~ paste0('(1b) Wśród pracujących najwięcej osób pracowało w podmiotach małych (do 9 pracujących) - ', round(w7_n_M/w3_n*100,1), '%. W jednostkach średnich (od 10 do 49 pracujących) pracowało ', round(w7_n_S/w3_n*100,1), '% ogółu pracujących, a w dużych (powyżej 49 pracujących) ', round(w7_n_D/w3_n*100,1), '%.'),
+### 2) małe > duże > średnie
+###### a) ponad połowa
+(w7_n_M > w7_n_S)&(w7_n_M > w7_n_D)&(w7_n_D > w7_n_S)&(w7_n_M > 0.5*w3_n) ~ paste0('(2a) Wśród pracujących ponad połowa pracowała w podmiotach małych (do 9 pracujących) - ', round(w7_n_M/w3_n*100,1), '%. W jednostkach dużych (powyżej 49 pracujących) pracowało ', round(w7_n_D/w3_n*100,1), '% ogółu pracujących, a w średnich (od 10 do 49 pracujących) ', round(w7_n_S/w3_n*100,1), '%.'),
+###### b) najwięcej
+(w7_n_M > w7_n_S)&(w7_n_M > w7_n_D)&(w7_n_D > w7_n_S)&(w7_n_M < 0.5*w3_n) ~ paste0('(2b) Wśród pracujących najwięcej osób pracowało w podmiotach małych (do 9 pracujących) - ', round(w7_n_M/w3_n*100,1), '%. W jednostkach dużych (powyżej 49 pracujących) pracowało ', round(w7_n_D/w3_n*100,1), '% ogółu pracujących, a w średnich (od 10 do 49 pracujących) ', round(w7_n_S/w3_n*100,1), '%.'),
+### 3) średnie > małe > duże
+###### a) ponad połowa
+(w7_n_S > w7_n_M)&(w7_n_S > w7_n_D)&(w7_n_M > w7_n_D)&(w7_n_S > 0.5*w3_n) ~ paste0('(3a) Wśród pracujących ponad połowa pracowała w podmiotach średnich (od 10 do 49 pracujących) - ', round(w7_n_S/w3_n*100,1), '%. W jednostkach małych (do 9 pracujących) pracowało ', round(w7_n_M/w3_n*100,1), '% ogółu pracujących, a w dużych (powyżej 49 pracujących) ', round(w7_n_D/w3_n*100,1), '%.'),
+###### b) najwięcej
+(w7_n_S > w7_n_M)&(w7_n_S > w7_n_D)&(w7_n_M > w7_n_D)&(w7_n_S < 0.5*w3_n) ~ paste0('(3b) Wśród pracujących najwięcej osób pracowało w podmiotach średnich (od 10 do 49 pracujących) - ', round(w7_n_S/w3_n*100,1), '%. W jednostkach małych (do 9 pracujących) pracowało ', round(w7_n_M/w3_n*100,1), '% ogółu pracujących, a w dużych (powyżej 49 pracujących) ', round(w7_n_D/w3_n*100,1), '%.'),
+### 4) średnie > duże > małe
+###### a) ponad połowa
+(w7_n_S > w7_n_M)&(w7_n_S > w7_n_D)&(w7_n_D > w7_n_M)&(w7_n_S > 0.5*w3_n) ~ paste0('(4a) Wśród pracujących ponad połowa pracowała w podmiotach średnich (od 10 do 49 pracujących) - ', round(w7_n_S/w3_n*100,1), '%. W jednostkach dużych (powyżej 49 pracujących) pracowało ', round(w7_n_D/w3_n*100,1), '% ogółu pracujących, a w małych (do 9 pracujących) ', round(w7_n_M/w3_n*100,1), '%.'),
+###### b) najwięcej
+(w7_n_S > w7_n_M)&(w7_n_S > w7_n_D)&(w7_n_D > w7_n_M)&(w7_n_S < 0.5*w3_n) ~ paste0('(4b) Wśród pracujących najwięcej osób pracowało w podmiotach średnich (od 10 do 49 pracujących) - ', round(w7_n_S/w3_n*100,1), '%. W jednostkach dużych (powyżej 49 pracujących) pracowało ', round(w7_n_D/w3_n*100,1), '% ogółu pracujących, a w małych (do 9 pracujących) ', round(w7_n_M/w3_n*100,1), '%.'),
+### 5) duże > małe > średnie
+###### a) ponad połowa
+(w7_n_D > w7_n_M)&(w7_n_D > w7_n_S)&(w7_n_M > w7_n_S)&(w7_n_D > 0.5*w3_n) ~ paste0('(5a) Wśród pracujących ponad połowa pracowała w podmiotach dużych (powyżej 49 pracujących) - ', round(w7_n_D/w3_n*100,1), '%. W jednostkach małych (do 9 pracujących) pracowało ', round(w7_n_M/w3_n*100,1), '% ogółu pracujących, a w średnich (od 10 do 49 pracujących) ', round(w7_n_S/w3_n*100,1), '%.'),
+###### b) najwięcej
+(w7_n_D > w7_n_M)&(w7_n_D > w7_n_S)&(w7_n_M > w7_n_S)&(w7_n_D < 0.5*w3_n) ~ paste0('(5b) Wśród pracujących najwięcej osób pracowało w podmiotach dużych (powyżej 49 pracujących) - ', round(w7_n_D/w3_n*100,1), '%. W jednostkach małych (do 9 pracujących) pracowało ', round(w7_n_M/w3_n*100,1), '% ogółu pracujących, a w średnich (od 10 do 49 pracujących) ', round(w7_n_S/w3_n*100,1), '%.'),
+### 6) duże > średnie > małe
+###### a) ponad połowa
+(w7_n_D > w7_n_M)&(w7_n_D > w7_n_S)&(w7_n_S > w7_n_M)&(w7_n_D > 0.5*w3_n) ~ paste0('(6a) Wśród pracujących ponad połowa pracowała w podmiotach dużych (powyżej 49 pracujących) - ', round(w7_n_D/w3_n*100,1), '%. W jednostkach średnich (od 10 do 49 pracujących) pracowało ', round(w7_n_S/w3_n*100,1), '% ogółu pracujących, a w małych (do 9 pracujących) ', round(w7_n_M/w3_n*100,1), '%.'),
+###### b) najwięcej
+(w7_n_D > w7_n_M)&(w7_n_D > w7_n_S)&(w7_n_S > w7_n_M)&(w7_n_D < 0.5*w3_n) ~ paste0('(6b) Wśród pracujących najwięcej osób pracowało w podmiotach dużych (powyżej 49 pracujących) - ', round(w7_n_D/w3_n*100,1), '%. W jednostkach średnich (od 10 do 49 pracujących) pracowało ', round(w7_n_S/w3_n*100,1), '% ogółu pracujących, a w małych (do 9 pracujących) ', round(w7_n_M/w3_n*100,1), '%.')
+)
+l1_8
+                                    
+ 
+
+```
+
+
+```{r jobGroups, cache=T, include=F}
+
+# Utworzenie bazy danych w podziale na wielkie grupy zawodów
+
+
+zawod <- c('przedstawiciele władz publicznych, wyżsi urzędnicy i kierownicy', 'specjaliści', 'technicy i inny średni personel', 'pracownicy biurowi', 'pracownicy usług i sprzedawcy', 'rolnicy, ogrodnicy, leśnicy i rybacy', 'robotnicy przemysłowi i rzemieślnicy', 'operatorzy i monterzy maszyn i urządzeń', 'pracownicy przy pracach prostych')
+
+zawod.edit <- c('przedstawicieli władz publicznych, wyższych urzędników i kierowników', 'specjalistów', 'techników i innego średniego personelu', 'pracowników biurowych', 'pracowników usług i sprzedawców', 'rolników, ogrodników, leśników i rybaków', 'robotników przemysłowych i rzemieślników', 'operatorów i monterów maszyn i urządzeń', 'pracowników przy pracach prostych')
+
+l.pracujacych_n <- c(wgz1_n, wgz2_n, wgz3_n, wgz4_n, wgz5_n, wgz6_n, wgz7_n, wgz8_n, wgz9_n)
+
+l.pracujacych_n_1 <- c(wgz1_n_1, wgz2_n_1, wgz3_n_1, wgz4_n_1, wgz5_n_1, wgz6_n_1, wgz7_n_1, wgz8_n_1, wgz9_n_1)
+
+l.wolnych.miejsc_n <- c(wgz1_n_w, wgz2_n_w, wgz3_n_w, wgz4_n_w, wgz5_n_w, wgz6_n_w, wgz7_n_w, wgz8_n_w, wgz9_n_w)
+
+l.wolnych.miejsc_n_1 <- c(wgz1_n_1_w, wgz2_n_1_w, wgz3_n_1_w, wgz4_n_1_w, wgz5_n_1_w, wgz6_n_1_w, wgz7_n_1_w, wgz8_n_1_w, wgz9_n_1_w)
+l.pracujacych_n_M <- c(wgz1_n_M, wgz2_n_M, wgz3_n_M, wgz4_n_M, wgz5_n_M, wgz6_n_M, wgz7_n_M, wgz8_n_M, wgz9_n_M)
+
+l.pracujacych_n_S <- c(wgz1_n_S, wgz2_n_S, wgz3_n_S, wgz4_n_S, wgz5_n_S, wgz6_n_S, wgz7_n_S, wgz8_n_S, wgz9_n_S)
+
+l.pracujacych_n_D <- c(wgz1_n_D, wgz2_n_D, wgz3_n_D, wgz4_n_D, wgz5_n_D, wgz6_n_D, wgz7_n_D, wgz8_n_D, wgz9_n_D)
+
+
+WGZ <- data.frame(zawod, zawod.edit, l.pracujacych_n, l.pracujacych_n_1, l.wolnych.miejsc_n, l.wolnych.miejsc_n_1, l.pracujacych_n_M, l.pracujacych_n_S, l.pracujacych_n_D)
+WGZ <- WGZ %>% mutate(procent.ogolu_n = round(100*l.pracujacych_n/w3_n,1),
+                      stopa.wzrostu = round(100*(l.pracujacych_n - l.pracujacych_n_1)/l.pracujacych_n_1,1))
+
+```
+
+
+```{r include = F, cache = T}
+
+#Wśród pracujących dominującą grupą zawodową byli specjaliści...(tekst - strona 2 opracowania)
+
+
+
+WGZ2_1 <- WGZ %>% arrange(desc(l.pracujacych_n))
+WGZ2_2 <- WGZ %>% arrange(desc(stopa.wzrostu))
+
+
+
+l2_1_1 <- case_when (
+  
+  (WGZ2_2$stopa.wzrostu[1] > 0 & WGZ2_2$stopa.wzrostu[2] > 0 & WGZ2_2$stopa.wzrostu[9] < 0) ~ paste0('W odniesieniu do ', n-1, ' r. największy wzrost zatrudnienia nastąpił wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[1]), ' (o ', WGZ2_2$stopa.wzrostu[1] , '%). ', 'W drugiej kolejności wzrosła liczba ', as.character(WGZ2_2$zawod.edit[2]) , ' (o ', WGZ2_2$stopa.wzrostu[2] , '%). Największy spadek natomiast zaobserwowano w grupie ', as.character(WGZ2_2$zawod.edit[9]), ' (o ', abs(WGZ2_2$stopa.wzrostu[9]), '%).'),
+  
+  (WGZ2_2$stopa.wzrostu[1] > 0 & WGZ2_2$stopa.wzrostu[2] <= 0 & WGZ2_2$stopa.wzrostu[9] < 0) ~ paste0('W odniesieniu do ', n-1, ' r. największy wzrost zatrudnienia nastąpił wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[1]), ' (o ', WGZ2_2$stopa.wzrostu[1] , '%). ', 'Największy spadek natomiast zaobserwowano w grupie ', as.character(WGZ2_2$zawod.edit[9]), ' (o ', abs(WGZ2_2$stopa.wzrostu[9]), '%).'),
+  
+    (WGZ2_2$stopa.wzrostu[1] > 0 & WGZ2_2$stopa.wzrostu[9] > 0) ~ paste0('W odniesieniu do ', n-1, ' r. we wszystkich wielkich grupach zawodów nastąpił wzrost zatrudnienia, największy wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[1]), ' (o ', WGZ2_2$stopa.wzrostu[1] , '%).'),
+  
+    (WGZ2_2$stopa.wzrostu[1] < 0 & WGZ2_2$stopa.wzrostu[9] < 0) ~ paste0('W odniesieniu do ', n-1, ' r. we wszystkich wielkich grupach zawodów nastąpił spadek zatrudnienia, największy nastąpił wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[9]), ' (o ', abs(WGZ2_2$stopa.wzrostu[9]) , '%).'),
+  
+    (WGZ2_2$stopa.wzrostu[1] == 0 & WGZ2_2$stopa.wzrostu[9] == 0) ~ paste0('W odniesieniu do ', n-1, ' r. we wszystkich wielkich grupach zawodów zatrudnienie utrzymało się na tym samym poziomie.'),
+  
+    (WGZ2_2$stopa.wzrostu[1] > 0 & WGZ2_2$stopa.wzrostu[2] == 0 & WGZ2_2$stopa.wzrostu[9] == 0) ~ paste0('W odniesieniu do ', n-1, ' r. wzrost zatrudnienia nastąpił wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[1]), ' (o ', WGZ2_2$stopa.wzrostu[1] , '%). ', 'W pozostałych grupach zatrudnienie utrzymało się na tym samym poziomie'),
+  
+    (WGZ2_2$stopa.wzrostu[1] > 0 & WGZ2_2$stopa.wzrostu[2] > 0 & WGZ2_2$stopa.wzrostu[3] >= 0 & WGZ2_2$stopa.wzrostu[9] == 0) ~ paste0('W odniesieniu do ', n-1, ' r. największy wzrost zatrudnienia nastąpił wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[1]), ' (o ', WGZ2_2$stopa.wzrostu[1] , '%). ', 'W drugiej kolejności wzrosła liczba ', as.character(WGZ2_2$zawod.edit[2]) , ' (o ', WGZ2_2$stopa.wzrostu[2] , '%). ', 'W żadnej z pozostałych grup nie odnotowano spadku zatrudnienia.'),
+  
+    (WGZ2_2$stopa.wzrostu[1] == 0 & WGZ2_2$stopa.wzrostu[9] < 0) ~ paste0('W odniesieniu do ', n-1, ' r. we żadnej wielkiej grupie zawodów nie nastąpił wzrost zatrudnienia. Natomiast największy spadek nastąpił wśród zawodów zaliczanych do grupy ', as.character(WGZ2_2$zawod.edit[9]), ' (o ', abs(WGZ2_2$stopa.wzrostu[9]) , '%).')
+)
+
+
+```
+
+
+```{r include = F, cache = T}
+
+# Sort bazy po liczbie pracujących w jednostkach dużych
+WGZ3_1 <- WGZ %>% arrange(desc(l.pracujacych_n_D))
+# Sort bazy po liczbie pracujących w jednostkach średnich
+WGZ3_2 <- WGZ %>% arrange(desc(l.pracujacych_n_S))
+# Sort bazy po liczbie pracujących w jednostkach średnich
+WGZ3_3 <- WGZ %>% arrange(desc(l.pracujacych_n_M))
+
+# Specjaliści stanowili najliczniejszą grupę w podmiotach dużych i średnich.... (tekst str. 3, pierwszy akapit)
+
+l3_1_1 <- case_when(
+  
+  (WGZ3_1$zawod[1] == WGZ3_2$zawod[1] & WGZ3_3$zawod[1] != WGZ3_1$zawod[1]) ~ paste0('Najliczniejszą grupę w podmiotach dużych i średnich stanowili ', as.character(WGZ3_1$zawod[1]), ' - odpowiednio ', round(100*WGZ3_1$l.pracujacych_n_D[1]/w7_n_D,1), '% oraz ', round(100*WGZ3_2$l.pracujacych_n_S[1]/w7_n_S,1), '% ogółu pracujących w danej klasie wielkości podmiotów. ', 'W podmiotach małych natomiast dominującą grupą zawodową byli ', as.character(WGZ3_3$zawod[1]),  ', którzy stanowili ', round(100*WGZ3_3$l.pracujacych_n_M[1]/w7_n_M,1), '% wszystkich pracujących w tej klasie podmiotów.'),
+  (WGZ3_1$zawod[1] == WGZ3_3$zawod[1] & WGZ3_2$zawod[1] != WGZ3_1$zawod[1]) ~ paste0('Najliczniejszą grupę w podmiotach dużych i małych stanowili ', as.character(WGZ3_1$zawod[1]), ' - odpowiednio ', round(100*WGZ3_1$l.pracujacych_n_D[1]/w7_n_D,1), '% oraz ', round(100*WGZ3_3$l.pracujacych_n_M[1]/w7_n_M,1), '% ogółu pracujących w danej klasie wielkości podmiotów. ', 'W podmiotach średnich natomiast dominującą grupą zawodową byli ', as.character(WGZ3_2$zawod[1]),  ', którzy stanowili ', round(100*WGZ3_2$l.pracujacych_n_S[1]/w7_n_S,1), '% wszystkich pracujących w tej klasie podmiotów.'),
+  (WGZ3_2$zawod[1] == WGZ3_3$zawod[1] & WGZ3_1$zawod[1] != WGZ3_2$zawod[1]) ~ paste0('Najliczniejszą grupę w podmiotach średnich i małych stanowili ', as.character(WGZ3_2$zawod[1]), ' - odpowiednio ', round(100*WGZ3_2$l.pracujacych_n_S[1]/w7_n_S,1), '% oraz ', round(100*WGZ3_3$l.pracujacych_n_M[1]/w7_n_M,1), '% ogółu pracujących w danej klasie wielkości podmiotów. ', 'W podmiotach dużych natomiast dominującą grupą zawodową byli ', as.character(WGZ3_1$zawod[1]),  ', którzy stanowili ', round(100*WGZ3_1$l.pracujacych_n_D[1]/w7_n_D,1), '% wszystkich pracujących w tej klasie podmiotów.'),
+  (WGZ3_1$zawod[1] == WGZ3_2$zawod[1] & WGZ3_1$zawod[1] == WGZ3_3$zawod[1]) ~ paste0('Najliczniejszą grupę w podmiotach dużych, średnich jak i w małych stanowili ', as.character(WGZ3_1$zawod[1]), ' - odpowiednio ', round(100*WGZ3_1$l.pracujacych_n_D[1]/w7_n_D,1), '%, ', round(100*WGZ3_2$l.pracujacych_n_S[1]/w7_n_S,1), '% oraz ', round(100*WGZ3_3$l.pracujacych_n_M[1]/w7_n_M,1), '% ogółu pracujących w danej klasie wielkości podmiotów.'),
+  (WGZ3_1$zawod[1] != WGZ3_2$zawod[1] & WGZ3_1$zawod[1] != WGZ3_3$zawod[1]) ~ paste0('Najliczniejszą grupę w podmiotach dużych stanowili ', as.character(WGZ3_1$zawod[1]), ' tj. ', round(100*WGZ3_1$l.pracujacych_n_D[1]/w7_n_D,1), '% ogółu pracujących w tej klasie wielkości podmiotów. W podmiotach średnich dominującą grupą zawodową byli ', as.character(WGZ3_2$zawod[1]),  ', którzy stanowili ', round(100*WGZ3_2$l.pracujacych_n_S[1]/w7_n_S,1), '% wszystkich pracujących w tej klasie podmiotów. Natomiast w podmiotach małych dominowali ', as.character(WGZ3_3$zawod[1]), ' którzy stanowili ', round(100*WGZ3_3$l.pracujacych_n_M[1]/w7_n_M,1), '% wszystkich pracujących w tej klasie podmiotów.')
+  
+)
+
+
+
+```
+
+
+```{r include = F, cache = T}
+
+# W 2017 roku wśród pracujących odnotowano 24,5 tys. osób niepełnosprawnych...(str. 3 akapit drugi)
+
+l3_2_1 <- case_when(
+  w5_n > w5_n_1 ~ paste0('Ich liczba wzrosła o ',round(100*(w5_n - w5_n_1)/w5_n_1,1) , '% w stosunku do ', n_1, ' r.'),
+  w5_n < w5_n_1 ~ paste0('Ich liczba zmniejszyłą się o ',abs(round(100*(w5_n - w5_n_1)/w5_n_1,1)) , '% w stosunku do ', n_1, ' r.'),
+  w5_n == w5_n_1 ~ paste0('Ich liczba nie zmieniła się w stosunku do ', n_1, ' r.')
+)
+
+
+
+l3_2_2 <- case_when(
+  w5pryw_n > w5pub_n ~ paste0('Najczęściej osoby niepełnosprawne pracowały w sektorze prywatnym (', round(100*w5pryw_n/w5_n,1), '% ogółu pracujących niepełnosprawnych)'),
+  w5pryw_n < w5pub_n ~ paste0('Najczęściej osoby niepełnosprawne pracowały w sektorze publicznym (', round(100*w5pub_n/w5_n,1), '% ogółu pracujących niepełnosprawnych)')
+)
+
+
+
+
+l3_2_3 <- case_when(
+  (w5_n_D > w5_n_S & w5_n_D > w5_n_M) ~ paste0('w podmiotach zatrudniających powyżej 49 osób (',round(100*w5_n_D/w5_n,1) , '% wszystkich pracujących niepełnosprawnych)'),
+  (w5_n_S > w5_n_D & w5_n_S > w5_n_M) ~ paste0('w podmiotach zatrudniających od 10 do 49 osób (',round(100*w5_n_S/w5_n,1) , '% wszystkich pracujących niepełnosprawnych)'),
+  (w5_n_M > w5_n_S & w5_n_M > w5_n_D) ~ paste0('w podmiotach zatrudniających do 9 osób (',round(100*w5_n_M/w5_n,1) , '% wszystkich pracujących niepełnosprawnych)')
+)
+
+
+```
+
+
+```{r include = F, cache = T}
+
+# Utworzenie bazy danych dla sekcji PKD #
+
+sekcja <- c('rolnictwo, leśnictwo, łowiectwo i rybactwo', 'górnictwo i wydobywanie', 'przetwórstwo przemysłowe', 'wytwrzanie i zaopatrywanie w energię elektryczną, gaz, parę wodną, gorącą wodę i powietrze do układów klimatyzacyjnych', 'dostawa wody; gospodarowanie ściekami i odpadami oraz działalność związana z rekultywacją', 'budownictwo', 'handel hurtowy i detaliczny; naprawa pojazdów samochodowych, włączając motocykle', 'transport i gospodarka magazynowa', 'działalność związana z zakwaterowaniem i usługami gastronomicznymi', 'informacja i komunikacja', 'działalność finansowa i ubezpieczeniowa', 'działalność związana z obsługą rynku nieruchomości', 'działalność profesjonalna, naukowa i techniczna', 'działalność w zakresie usług administrowania i działalność wspierająca', 'administracja publiczna i obrona narodowa; obowiązkowe zabezpieczenie społeczne', 'edukacja', 'ochrona zdrowia i pomoc społeczna', 'działalność związana z kulturą, rozrywką i rekreacją', 'pozostała działalność usługowa')
+
+
+sekcja.edit <- c('rolnictwa, leśnictwa, łowiectwa i rybactwa', 'górnictwa i wydobywania', 'przetwórstwa przemysłowego', 'wytwrzania i zaopatrywania w energię elektryczną, gaz, parę wodną, gorącą wodę i powietrze do układów klimatyzacyjnych', 'dostawy wody; gospodarowania ściekami i odpadami oraz działalności związanej z rekultywacją', 'budownictwa', 'handlu hurtowego i detalicznego; naprawy pojazdów samochodowych, włączając motocykle', 'transportu i gospodarki magazynowej', 'działalności związanej z zakwaterowaniem i usługami gastronomicznymi', 'informacji i komunikacji', 'działalności finansowej i ubezpieczeniowej', 'działalności związanej z obsługą rynku nieruchomości', 'działalności profesjonalnej, naukowej i technicznej', 'działalności w zakresie usług administrowania i działalności wspierającej', 'administracji publicznej i obrony narodowej; obowiązkowego zabezpieczenia społecznego', 'edukacji', 'ochrony zdrowia i pomocy społecznej', 'działalności związanej z kulturą, rozrywką i rekreacją', 'pozostałej działalności usługowej')
+
+
+l.prac.niep_n <- c(SekAn_n,SekBn_n,SekCn_n,SekDn_n,SekEn_n,SekFn_n,SekGn_n,SekHn_n,SekIn_n,SekJn_n,SekKn_n,SekLn_n,SekMn_n,SekNn_n,SekOn_n,SekPn_n,SekQn_n,SekRn_n,SekSn_n)
+l.wolnych.miejsc_n_sekcja <- c(SekAw_n,SekBw_n,SekCw_n,SekDw_n,SekEw_n,SekFw_n,SekGw_n,SekHw_n,SekIw_n,SekJw_n,SekKw_n,SekLw_n,SekMw_n,SekNw_n,SekOw_n,SekPw_n,SekQw_n,SekRw_n,SekSw_n)
+l.wolnych.miejsc_n_sekcja_pryw <-c(SekAw_pryw_n,SekBw_pryw_n,SekCw_pryw_n,SekDw_pryw_n,SekEw_pryw_n,SekFw_pryw_n,SekGw_pryw_n,SekHw_pryw_n,SekIw_pryw_n,SekJw_pryw_n,SekKw_pryw_n,SekLw_pryw_n,SekMw_pryw_n,SekNw_pryw_n,SekOw_pryw_n,SekPw_pryw_n,SekQw_pryw_n,SekRw_pryw_n,SekSw_pryw_n)
+l.wolnych.miejsc_n_sekcja_pub <-c(SekAw_pub_n,SekBw_pub_n,SekCw_pub_n,SekDw_pub_n,SekEw_pub_n,SekFw_pub_n,SekGw_pub_n,SekHw_pub_n,SekIw_pub_n,SekJw_pub_n,SekKw_pub_n,SekLw_pub_n,SekMw_pub_n,SekNw_pub_n,SekOw_pub_n,SekPw_pub_n,SekQw_pub_n,SekRw_pub_n,SekSw_pub_n)
+
+
+SEKC_n <- data.frame(sekcja,sekcja.edit, l.prac.niep_n, l.wolnych.miejsc_n_sekcja,l.wolnych.miejsc_n_sekcja_pryw, l.wolnych.miejsc_n_sekcja_pub)
+
+
+#Sort bazy po liczbie pracujących osób niepełnosprawnych
+SEKC_n_1 <- SEKC_n %>% arrange(desc(l.prac.niep_n))
+
+#Sort bazy po liczbie wolnych miejsc pracy
+SEKC_n_2 <- SEKC_n %>% arrange(desc(l.wolnych.miejsc_n_sekcja))
+
+#Sort bazy po liczbie wolnych miejsc pracy w sektorze prywatnym
+SEKC_n_3 <- SEKC_n %>% arrange(desc(l.wolnych.miejsc_n_sekcja_pryw))
+
+#Sort bazy po liczbie wolnych miejsc pracy w sektorze publicznym
+SEKC_n_4 <- SEKC_n %>% arrange(desc(l.wolnych.miejsc_n_sekcja_pub))
+```
+
+
+```{r include = F, cache = T}
+
+# Strona 3 opracowania, akapit 3 #
+
+l3_3_1 <- case_when(
+  w4_n_w > w4_n_1_w ~ paste0('W skali roku liczba ta wzrosła o ', round(100*(w4_n_w - w4_n_1_w)/w4_n_1_w,1), '%.'),
+  w4_n_w < w4_n_1_w ~ paste0('W skali roku liczba ta zmalała o ', abs(round(100*(w4_n_w - w4_n_1_w)/w4_n_1_w,1)), '%.'),
+  w4_n_w == w4_n_1_w ~ paste0('W skali roku liczba ta nie zmieniła się.')
+)
+
+l3_3_2 <- case_when(
+  w4_n_w_pryw > w4_n_w_pub ~ paste0('Pod względem liczby wolnych stanowisk pracy dominował sektor prywatny - ', round(100*w4_n_w_pryw/w4_n_w,1), '% wszystkich nieobsadzonych stanowisk pochodziło z tego sektora. Najwięcej wolnych miejsc pracy (', round(100*SEKC_n_3$l.wolnych.miejsc_n_sekcja_pryw[1]/w4_n_w_pryw,1) ,'%) w sektorze prywatnym przypadało na podmioty prowadzące działalność w zakresie ', SEKC_n_3$sekcja.edit[1], '.'),
+  w4_n_w_pryw < w4_n_w_pub ~ paste0('Pod względem liczby wolnych stanowisk pracy dominował sektor publiczny - ', round(100*w4_n_w_pub/w4_n_w,1), '% wszystkich nieobsadzonych stanowisk pochodziło z tego sektora. Najwięcej wolnych miejsc pracy (', round(100*SEKC_n_4$l.wolnych.miejsc_n_sekcja_pub[1]/w4_n_w_pub,1) ,'%) w sektorze publicznym przypadało na podmioty prowadzące działalność w zakresie ', SEKC_n_4$sekcja.edit[1], '.'),
+  w4_n_w_pryw == w4_n_w_pub ~ paste0('Liczba wolnych stanowisk pracy rozkładała się po równo w sektorze publicznym i prywatnym. Najwięcej wolnych miejsc pracy w sektorze publicznym przypadało na podmioty prowadzące działalność w zakresie ', SEKC_n_4$sekcja.edit[1], '(', round(100*SEKC_n_4$l.wolnych.miejsc_n_sekcja_pub[1]/w4_n_w_pub,1), '%) natomiast w sektorze prywatnym najwięcej wolnych miejsc pracy przypadało na podmioty prowadzące działalność w zakresie ', SEKC_n_3$sekcja.edit[1], '(', round(100*SEKC_n_3$l.wolnych.miejsc_n_sekcja_pryw[1]/w4_n_w_pryw,1),'%).' )
+)
+
+
+```
+
+
+
+\includegraphics[width=7cm, height=2cm]{logo_US_100_lat}
+\vspace{-0.5cm}
+
+\marginpar{
+  \begin{tcolorbox}[width=5cm,colback={granat}, colframe={granat}, arc=5mm, sharp corners=east, colupper=white] 
+        \fontsize{9.5}{10pt}\selectfont{\firasemibold\textbf {INFORMACJE SYGNALNE}}
+  \end{tcolorbox}}
+
+\fontsize{20}{6pt}\selectfont \textbf{Popyt na pracę w województwie \break kujawsko-pomorskim w `r n` r.}
+
+\marginpar{
+  \begin{tcolorbox}[width=5.2cm, colframe={szary}, arc=0mm, sharp corners=east, colupper={granat}] 
+        \fontsize{9.5}{6pt}\selectfont{\firasemibold{22.06.2018 r.}}
+  \end{tcolorbox}}
+
+
+\begin{minipage}{5.5cm}
+  \begin{tcolorbox}[width=5.2cm, height=3.2cm, colback={granat}, colframe={granat}, outer arc=0mm, colupper=white, collower=white] 
+       \fontsize{36}{0}\selectfont {\SI{`r round(100*(w4_n_w-w4_n_1_w)/w4_n_1_w,1)`}{\%}}
+    \tcblower \vspace{-0.3cm} 
+       \fontsize{10}{10pt}\selectfont {Wzrost liczby wolnych miejsc \break pracy w stosunku do `r n_1` r.}
+  \end{tcolorbox}  
+\end{minipage}
+\begin{minipage}{8cm}
+\vspace{-1cm}
+\fontsize{9.5}{12pt}\selectfont\textbf{W ciągu `r n` r. w województwie kujawsko-pomorskim utworzono `r round(w1_n/1000,1)` tys. nowych miejsc pracy. `r l1_2` `r l1_3`}
+\end{minipage}
+\marginpar{
+  \begin{tcolorbox}[width=5cm, colback={szary}, colframe={szary}, arc=0mm, sharp corners=east, colupper={granat}] 
+        \fontsize{9}{12pt}\selectfont Liczba nowo utworzonych miejsc pracy w województwie kujawsko-pomorskim stanowiła `r round(100*w1_n/w1_p_n,1)`{\%} nowo utworzonych miejsc pracy w Polsce
+  \end{tcolorbox}}
+
+ 
+  
+\fontsize{9.5}{12pt}\selectfont  
+Badanie popytu na pracę realizowane jest z częstotliwością kwartalną, na formularzu Z-05 (Badanie popytu na pracę), na próbie podmiotów gospodarki narodowej zatrudniających przynajmniej 1 osobę. Badanie to dostarcza informacji o obsadzonych miejscach pracy (popyt zrealizowany), wolnych miejscach pracy (popyt niezrealizowany) oraz zlikwidowanych miejscach pracy. Wśród wolnych miejsc pracy wyróżnia się nowo utworzone miejsca pracy.
+
+`r l1_4` `r l1_5` `r l1_6` 
+
+
+
+```{r tablica1-preparing, include=FALSE, cache=TRUE}
+dane_do_tabl1 <- data_frame(
+                      WYSZCZEGOLNIENIE = c('Pracujący', 'z tego', 'kobiety', 'niepełnosprawni', 'w sektorze prywatnym'), 
+                      rok_2016 = c('', w3_n_1, w3k_n_1, w5_n_1, w6pryw_n_1),
+                      rok_2017 = c('', w3_n, w3k_n, w5_n, w6pryw_n),
+                      kolumna_3 = c('', 101.9,102.1,103.9,103.2))
+names(dane_do_tabl1) <- NULL
+```
+
+```{r tablica1, results=FALSE, echo=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+kable(dane_do_tabl1, format = "latex", caption = "Pracujący w województwie kujawsko-pomorskim",
+      align = c('l','r','r','r')) %>%
+  kable_styling(full_width = TRUE, font_size = 8, latex_options = c('hold_position'), bootstrap_options = 'bordered') %>%
+  add_header_above(c("WYSZCZEGÓLNIENIE" = 1,"w liczbach bezwzględnych" = 2, "2016=100" = 1)) %>% 
+  add_header_above(c(" " = 1,"2016" = 1, "2017" = 2)) %>% 
+  row_spec(1, bold = TRUE, background = 'white')
+  
+```
+
+
+\definecolor{granat}{RGB}{0,29,119}
+\arrayrulecolor{granat}
+\arrayrulewidth=.5pt
+\renewcommand\tablename{\textbf{Tablica}}
+\fontsize{8}{12pt}\selectfont
+\setlength{\extrarowheight}{5pt}
+\begin{table}[h]
+\caption{\textbf{Pracujący w województwie kujawsko-pomorskim} \newline \hspace{1.25cm} Stan w dniu 31 XII}
+\begin{tabular}{>{\raggedright}p{5.3cm}|>{\raggedleft}p{2.5cm}|>{\raggedleft}p{2.5cm}|>{\raggedleft\arraybackslash}p{2.5cm}}
+  \multicolumn{1}{c|}{\multirow{2}{*}{WYSZCZEGÓLNIENIE}} & \multicolumn{1}{c|}{`r n_1`} & \multicolumn{2}{c}{`r n`}\\\cline{2-4}
+                                                   & \multicolumn{2}{c|}{w liczbach bezwzględnych} & \multicolumn{1}{c}{`r n_1`=100}\\
+                                  \noalign{\global\arrayrulewidth=1.5pt}\hline                       
+                                  \noalign{\global\arrayrulewidth=.5pt}
+\textbf{Pracujący} \newline \hspace{.31cm} z tego: & \textbf{`r paste(w3_n_1)`} & \textbf{`r paste(w3_n)`} & \textbf{101,9}\\\hline
+                           \hspace{.62cm}  kobiety & `r paste(w3k_n_1)` & `r paste(w3k_n)` & 102,1\\\hline
+                    \hspace{.62cm} niepełnosprawni & `r paste(w5_n_1)` & `r paste(w5_n)` & 103,9\\\hline
+               \hspace{.62cm} w sektorze prywatnym & `r paste(w6pryw_n_1)` & `r paste(w6pryw_n)` & 103,3
+\end{tabular}
+\end{table}
+
+\fontsize{9.5}{10pt}\selectfont
+`r l1_7` 
+
+`r l1_8`
+
+\newpage
+
+
+\fontsize{9.5}{10pt}\selectfont
+Wśród pracujących dominującą grupą zawodową byli `r WGZ2_1$zawod[1]`. Stanowili oni `r WGZ2_1$procent.ogolu_n[1]`% ogółu pracujących w województwie kujawsko-pomorskim. Na drugim miejscu pod względem liczebności znaleźli się `r WGZ2_1$zawod[2]` - ich udział w ogólnej liczbie pracujących wyniósł `r WGZ2_1$procent.ogolu_n[2]`%. `r l2_1_1`
+
+`r l3_1_1`
+
+W `r n` roku wśród pracujących odnotowano `r round(w5_n/1000,1)` tys. osób niepełnosprawnych - stanowiły one `r round(100*w5_n/w3_n,1)`% ogółu pracujących w województwie. `r l3_2_1` `r l3_2_2` `r l3_2_3` oraz w podmiotach prowadzących działalność w zakresie `r SEKC_n_1$sekcja.edit[1]` (`r round(100*SEKC_n_1$l.prac.niep_n[1]/w5_n,1)`%).
+
+
+\fontsize{9,5}{6pt}\selectfont \textbf{Wolne miejsca pracy}
+
+Na koniec `r n` r. w województwie kujawsko-pomorskim było `r paste0(w4_n_w)` wolnych miejsc pracy. `r l3_3_1` Najwięcej wolnych miejsc pracy odnotowano w sekcji `r paste0(SEKC_n_2$sekcja[1])` - `r round(100*SEKC_n_2$l.wolnych.miejsc_n_sekcja[1]/w4_n_w,1)`% wszystkich wolnych miejsc pracy w województwie. Na drugim miejscu znalazła się sekcja `r paste0(SEKC_n_2$sekcja[2])`, oferująca `r round(100*SEKC_n_2$l.wolnych.miejsc_n_sekcja[2]/w4_n_w,1)`% wszystkich wolnych miejsc pracy. `r l3_3_2`
+
+
+
+
+
+
+
+
+
